@@ -1,0 +1,19 @@
+[project]
+name = "soft-delete"
+version = "0.1.0"
+description = "Event-driven document deletion API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "elasticsearch>=9.2.0",
+    "fastapi>=0.121.1",
+    "kafka-python>=2.2.15",
+    "psycopg2-binary>=2.9.11",
+    "sqlalchemy>=2.0.44",
+    "uvicorn>=0.38.0",
+]
+
+[tool.uv]
+# Optional settings for reproducibility and performance
+compile-bytecode = true
+prefer-binary = true
