@@ -1,7 +1,7 @@
 import json, os, time
 import logging
 
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
