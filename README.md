@@ -24,12 +24,15 @@ The accompanying theory and design rationale are explained in [](this blog post)
 
 Clone the repo:
 
-```git clone https://github.com/higim/soft-delete
+```
+git clone https://github.com/higim/soft-delete
 cd soft-delete
 ```
 Start the full stack:
 
-```docker compose up --build```
+```
+docker compose up --build
+```
 
 You can interact with the API using Postman, cURL, or any HTTP client:
 
@@ -49,8 +52,8 @@ Since deletions are idempotent, the soft delete mechanism work correctly even if
 
 You have to create a documents bucket:
 
-```mc alias set local http://minio:9000 minio minio123
-
+```
+mc alias set local http://minio:9000 minio minio123
 mc mb -p local/documents || true
 ```
 
