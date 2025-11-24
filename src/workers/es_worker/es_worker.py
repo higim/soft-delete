@@ -1,18 +1,7 @@
-#         out_event = {
-#             "document_id": doc_id,
-#             "es_index": index,
-#             "es_id": es_id
-#         }
-
-#         producer.send("document.es_deleted", out_event)
-#         producer.flush()
-
-#         logging.info(f"Emitted event: document.es_deleted for doc={doc_id}")
-
 import os, json, time
 import logging
 
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 from elasticsearch import Elasticsearch
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +10,7 @@ KAFKA_BROKER = os.getenv("KAFKA_BROKER")
 ES_ENDPOINT = os.getenv("ES_ENDPOINT")
 ES_INDEX = os.getenv("ES_INDEX")
 
-def wait_kafka():
+def wait_kafka_consumer():
     for _ in range(10):
         try:
             consumer = KafkaConsumer(
@@ -49,8 +38,12 @@ def get_es():
 
 
 def main():
-    consumer = wait_kafka()
+    consumer = wait_kafka_consumer()
     es = get_es()
+    producer = KafkaProducer(
+        bootstrap_servers=[KAFKA_BROKER],
+        value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    )
 
     logging.info("Waiting for kafka events")
     for message in consumer:
@@ -64,6 +57,13 @@ def main():
         es.options(ignore_status=[400, 404]).delete(index=ES_INDEX, id=document_id)
         
         # Send document removed
+        removed_event = {
+            "document_id": document_id
+        }
+
+        producer.send("document.es_deleted", removed_event)
+
+        logging.info(f"Emitted event: document.es_deleted for doc={document_id}")
 
 if __name__=="__main__":
     main()

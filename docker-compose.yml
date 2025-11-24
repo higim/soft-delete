@@ -82,6 +82,11 @@ services:
     build: ./src/workers/finalizer_worker
     environment:
       - KAFKA_BROKER=kafka:9092
+      - POSTGRES_HOST=postgres
+      - POSTGRESS_PORT=5432
+      - POSTGRES_DB=documents
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=postgres
     depends_on:
       - kafka
 
