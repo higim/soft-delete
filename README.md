@@ -3,7 +3,7 @@
 This repository contains a proof-of-concept (POC) demonstrating how to decouple deletion functionality in a distributed system 
 with multiple storage layers.
 
-The accompanying theory and design rationale are explained in [](this blog post).
+The accompanying theory and design rationale are explained in [in this blog post](https://higim.github.io/2025/11/24/Soft-Delete-For-Eventual-Consistency.html).
 
 ### Architecture Overview
 
