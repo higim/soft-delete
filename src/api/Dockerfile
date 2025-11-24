@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12
 
 # 2. Set working directory
 WORKDIR /app
@@ -23,4 +23,4 @@ COPY ./ /app/
 EXPOSE 8000
 
 # 8. Run Uvicorn with auto-reload (optional for dev)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

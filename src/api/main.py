@@ -1,67 +1,72 @@
-import os
-import json
-import time
-import datetime
 from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI, HTTPException
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime
+from fastapi import FastAPI, HTTPException, Depends
 
-# from kafka import KafkaProducer
+from infra.base import engine, Base
+from infra.repositories.documents_repository_sql import DocumentNotFoundException
 
-POSTGRES_URL = os.getenv("DATABASE_URL")
-# KAFKA_BROKER = os.getenv("KAFKA_BROKER")
+from use_cases.dependencies import (
+    get_document_use_case,
+    create_document_use_case,
+    delete_document_use_case
+)
+from use_cases.documents import (
+    GetDocumentUseCase,
+    CreateDocumentUseCase,
+    DeleteDocumentUseCase
+)
 
-engine = create_engine(POSTGRES_URL)
-Base = declarative_base()
+from models.documents import DocumentCreate, DocumentResponse
 
-class File(Base):
-    __tablename__ = "files"
-
-    id = Column(Integer, primary_key=True, index=True)
-    file_name = Column(String, nullable=False)
-    uploaded_at = Column(DateTime, default=datetime.datetime.now)
-    deleted_at = Column(DateTime, nullable=True)
+logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        logging.info("Building database")
+        await conn.run_sync(Base.metadata.create_all)
     yield
 
-app = FastAPI(title="Documents async deletion")
+app = FastAPI(title="Documents async deletion", lifespan=lifespan)
 
 @app.get("/")
 def read_root():
     return {"status": "ok"}
 
-# for _ in range(10):  # retry 10 times
-#     try:
-#         producer = KafkaProducer(bootstrap_servers=[KAFKA_BROKER], 
-#                                  value_serializer=lambda v: json.dumps(v).encode("utf-8"))
-#         print("Connected to Kafka")
-#         break
-#     except Exception as e:
-#         print("Kafka not ready, retrying in 3s...", e)
-#         time.sleep(3)
-# else:
-#     raise RuntimeError("Cannot connect to Kafka after several retries")
+@app.get("/documents/{id}", response_model=DocumentResponse)
+async def get_document(
+    id: str,
+    get_document_use_case: GetDocumentUseCase = Depends(get_document_use_case)
+):
+    try:
+        logging.info(f"Getting document with id {id}")
+        return await get_document_use_case.execute(id)
+    except DocumentNotFoundException as e:
+        logging.info(f"Exception {e}")
+        raise HTTPException(status_code=404, detail="File not found")
 
+@app.post("/documents/")
+async def post_file(
+    file: DocumentCreate,
+    create_document_use_case: CreateDocumentUseCase = Depends(create_document_use_case)):
+    try:
+        logging.info(f"Creating document {file.name}")
+        return await create_document_use_case.execute(file.name)
+    except Exception as e:
+        logging.info(f"Exception {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# @app.delete("/documents/{id}", status_code=202)
-# def delete_document(id: str):
-#     conn = psycopg2.connect(POSTGRES_URL)
-#     cur = conn.cursor()
-
-#     cur.execute("UPDATE documents SET deleted_at = NOW() WHERE id = %s RETURNING id;", (id,))
-#     if cur.rowcount == 0:
-#         raise HTTPException(status_code=404, detail="Document not found")
-#     conn.commit()
-#     cur.close()
-#     conn.close()
-
-#     event = {"event": "DocumentDeleted", "document_id": id, "timestamp": datetime.datetime.now().isoformat()}
-#     producer.send("document.deletion.requested", event)
-
-#     return {"status": "queued", "document_id": id}
+@app.delete("/documents/{id}", status_code=202)
+async def delete_document(
+    id: str,
+    delete_document_use_case: DeleteDocumentUseCase = Depends(delete_document_use_case)
+):
+    try:
+        logging.info(f"Deleting document with id {id}")
+        await delete_document_use_case.execute(id)
+        logging.info(f"Soft delete for document with {id} complete")
+        return { "status": "file soft-deleted", "id": id }
+    except Exception as e:
+        logging.info(f"Exception: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
